@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Bot - GX HOSTING Host{% endblock %}
+
+{% block body %}
+<div class="app-container">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="{{ url_for('dashboard') }}" class="logo">
+                <div class="logo-icon"><i class="fas fa-rocket"></i></div>
+                <div>
+                    <div class="logo-text">GX HOSTING</div>
+                    <div class="logo-subtitle">Bot Hosting</div>
+                </div>
+            </a>
+        </div>
+        <nav class="nav-menu">
+            <div class="nav-section">
+                <div class="nav-section-title">Main</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-item">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+                <a href="{{ url_for('upload') }}" class="nav-item active">
+                    <i class="fas fa-cloud-upload-alt"></i> Upload Bot
+                </a>
+                <a href="{{ url_for('my_files') }}" class="nav-item">
+                    <i class="fas fa-folder-open"></i> My Files
+                </a>
+            </div>
+            {% if user.role == 'owner' %}
+            <div class="nav-section">
+                <div class="nav-section-title">Administration</div>
+                <a href="{{ url_for('admin_panel') }}" class="nav-item">
+                    <i class="fas fa-shield-alt"></i> Admin Panel
+                </a>
+            </div>
+            {% endif %}
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-card">
+                <div class="user-avatar">{{ user.username[0]|upper }}</div>
+                <div class="user-info">
+                    <div class="user-name">{{ user.username }}</div>
+                    <div class="user-role">{{ user.role|title }}</div>
+                </div>
+                <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fas fa-sign-out-alt"></i></a>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="top-bar">
+            <button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+            <h1 class="page-title">Upload <span>Bot</span></h1>
+        </div>
+
+        <div class="content-area">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-container">
+                        {% for category, message in messages %}
+                            <div class="flash-message flash-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' }}"></i>
+                                <span>{{ message|safe }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="card fade-in">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-cloud-upload-alt"></i> Upload Your Bot</div>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('upload_post') }}" enctype="multipart/form-data" id="uploadForm">
+                        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+                            <div class="upload-icon">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </div>
+                            <h3 style="margin-bottom: 8px;">Drop your bot file here</h3>
+                            <p style="color: var(--text-secondary); margin-bottom: 16px;">or click to browse</p>
+                            <div style="display: flex; gap: 12px; justify-content: center;">
+                                <span class="badge" style="background: rgba(139,92,246,0.1); color: var(--accent-primary);">
+                                    <i class="fab fa-python"></i> .py
+                                </span>
+                                <span class="badge" style="background: rgba(245,158,11,0.1); color: var(--warning);">
+                                    <i class="fas fa-file-archive"></i> .zip
+                                </span>
+                            </div>
+                            <input type="file" id="fileInput" name="file" accept=".py,.zip" style="display: none;" required>
+                        </div>
+
+                        <div id="filePreview" style="display: none; margin-top: 20px; padding: 16px; background: var(--bg-secondary); border-radius: 12px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div class="file-icon default" id="previewIcon">
+                                    <i class="fas fa-file"></i>
+                                </div>
+                                <div style="flex: 1;">
+                                    <div id="fileName" style="font-weight: 600;"></div>
+                                    <div id="fileSize" style="font-size: 12px; color: var(--text-secondary);"></div>
+                                </div>
+                                <button type="button" class="btn btn-danger btn-sm btn-icon" onclick="clearFile()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-full" style="margin-top: 20px;" id="submitBtn" disabled>
+                            <i class="fas fa-upload"></i>
+                            Upload Bot
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 24px;">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-info-circle"></i> Upload Guidelines</div>
+                </div>
+                <div class="card-body">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                        <div style="padding: 16px; background: var(--bg-secondary); border-radius: 12px;">
+                            <div style="width: 40px; height: 40px; background: rgba(139,92,246,0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                                <i class="fas fa-file-code" style="color: var(--accent-primary);"></i>
+                            </div>
+                            <h4 style="font-size: 14px; margin-bottom: 8px;">Single Python File</h4>
+                            <p style="font-size: 13px; color: var(--text-secondary);">Upload a single .py file. It will be executed directly as the entry point.</p>
+                        </div>
+                        <div style="padding: 16px; background: var(--bg-secondary); border-radius: 12px;">
+                            <div style="width: 40px; height: 40px; background: rgba(245,158,11,0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                                <i class="fas fa-file-archive" style="color: var(--warning);"></i>
+                            </div>
+                            <h4 style="font-size: 14px; margin-bottom: 8px;">ZIP Archive</h4>
+                            <p style="font-size: 13px; color: var(--text-secondary);">Upload a .zip containing multiple files. Auto-detects main.py, bot.py, app.py, etc.</p>
+                        </div>
+                        <div style="padding: 16px; background: var(--bg-secondary); border-radius: 12px;">
+                            <div style="width: 40px; height: 40px; background: rgba(34,197,94,0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                                <i class="fas fa-cogs" style="color: var(--success);"></i>
+                            </div>
+                            <h4 style="font-size: 14px; margin-bottom: 8px;">Auto Dependencies</h4>
+                            <p style="font-size: 13px; color: var(--text-secondary);">Include requirements.txt for automatic package installation.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+const filePreview = document.getElementById('filePreview');
+const submitBtn = document.getElementById('submitBtn');
+
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    uploadZone.addEventListener(eventName, preventDefaults, false);
+});
+
+function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+['dragenter', 'dragover'].forEach(eventName => {
+    uploadZone.addEventListener(eventName, () => uploadZone.classList.add('dragover'), false);
+});
+
+['dragleave', 'drop'].forEach(eventName => {
+    uploadZone.addEventListener(eventName, () => uploadZone.classList.remove('dragover'), false);
+});
+
+uploadZone.addEventListener('drop', handleDrop, false);
+
+function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    if (files.length) {
+        fileInput.files = files;
+        handleFileSelect();
+    }
+}
+
+fileInput.addEventListener('change', handleFileSelect);
+
+function handleFileSelect() {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['py', 'zip'].includes(ext)) {
+        showToast('error', 'Only .py and .zip files are allowed');
+        clearFile();
+        return;
+    }
+
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = formatFileSize(file.size);
+
+    const icon = document.getElementById('previewIcon');
+    if (ext === 'py') {
+        icon.className = 'file-icon py';
+        icon.innerHTML = '<i class="fab fa-python"></i>';
+    } else {
+        icon.className = 'file-icon zip';
+        icon.innerHTML = '<i class="fas fa-file-archive"></i>';
+    }
+
+    filePreview.style.display = 'block';
+    submitBtn.disabled = false;
+}
+
+function clearFile() {
+    fileInput.value = '';
+    filePreview.style.display = 'none';
+    submitBtn.disabled = true;
+}
+
+function formatFileSize(bytes) {
+    if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
+    if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+    if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return bytes + ' B';
+}
+
+function showToast(type, message) {
+    const container = document.querySelector('.flash-container') || document.createElement('div');
+    if (!container.classList.contains('flash-container')) {
+        container.className = 'flash-container';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `flash-message flash-${type}`;
+    toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'times-circle'}"></i><span>${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+</script>
+{% endblock %}

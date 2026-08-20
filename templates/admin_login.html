@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Access - GX HOSTING Host{% endblock %}
+
+{% block body %}
+<div class="app-container">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="{{ url_for('dashboard') }}" class="logo">
+                <div class="logo-icon"><i class="fas fa-rocket"></i></div>
+                <div>
+                    <div class="logo-text">GX HOSTING</div>
+                    <div class="logo-subtitle">Bot Hosting</div>
+                </div>
+            </a>
+        </div>
+        <nav class="nav-menu">
+            <div class="nav-section">
+                <div class="nav-section-title">Main</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-item">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+                <a href="{{ url_for('upload') }}" class="nav-item">
+                    <i class="fas fa-cloud-upload-alt"></i> Upload Bot
+                </a>
+                <a href="{{ url_for('my_files') }}" class="nav-item">
+                    <i class="fas fa-folder-open"></i> My Files
+                </a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-card">
+                <div class="user-avatar">{{ user.username[0]|upper }}</div>
+                <div class="user-info">
+                    <div class="user-name">{{ user.username }}</div>
+                    <div class="user-role">{{ user.role|title }}</div>
+                </div>
+                <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fas fa-sign-out-alt"></i></a>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="top-bar">
+            <button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+            <h1 class="page-title">Admin <span>Access</span></h1>
+        </div>
+
+        <div class="content-area">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-container">
+                        {% for category, message in messages %}
+                            <div class="flash-message flash-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' }}"></i>
+                                <span>{{ message|safe }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="card fade-in" style="max-width: 500px; margin: 60px auto;">
+                <div class="card-header" style="text-align: center;">
+                    <div style="width: 64px; height: 64px; background: var(--accent-gradient); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: white; font-size: 28px;">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="card-title" style="font-size: 20px;">Admin Authentication</div>
+                    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Enter admin password to access the panel</div>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin_access') }}">
+                        <div class="form-group">
+                            <label class="form-label"><i class="fas fa-lock"></i> Admin Password</label>
+                            <input type="password" name="password" class="form-input" placeholder="Enter admin password" required autofocus>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-full">
+                            <i class="fas fa-unlock"></i> Unlock Admin Panel
+                        </button>
+                    </form>
+                    <div style="text-align: center; margin-top: 16px;">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary" style="font-size: 13px;">
+                            <i class="fas fa-arrow-left"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

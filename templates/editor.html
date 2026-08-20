@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}File Editor - GX HOSTING Host{% endblock %}
+
+{% block body %}
+<div class="app-container">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="{{ url_for('dashboard') }}" class="logo">
+                <div class="logo-icon"><i class="fas fa-rocket"></i></div>
+                <div>
+                    <div class="logo-text">GX HOSTING</div>
+                    <div class="logo-subtitle">Bot Hosting</div>
+                </div>
+            </a>
+        </div>
+        <nav class="nav-menu">
+            <div class="nav-section">
+                <div class="nav-section-title">Main</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-item">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+                <a href="{{ url_for('upload') }}" class="nav-item">
+                    <i class="fas fa-cloud-upload-alt"></i> Upload Bot
+                </a>
+                <a href="{{ url_for('my_files') }}" class="nav-item">
+                    <i class="fas fa-folder-open"></i> My Files
+                </a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Administration</div>
+                <a href="{{ url_for('admin_panel') }}" class="nav-item">
+                    <i class="fas fa-shield-alt"></i> Admin Panel
+                </a>
+                <a href="{{ url_for('admin_editor') }}" class="nav-item active">
+                    <i class="fas fa-code"></i> File Editor
+                </a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-card">
+                <div class="user-avatar">{{ user.username[0]|upper }}</div>
+                <div class="user-info">
+                    <div class="user-name">{{ user.username }}</div>
+                    <div class="user-role">Owner</div>
+                </div>
+                <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fas fa-sign-out-alt"></i></a>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="top-bar">
+            <button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+            <h1 class="page-title">File <span>Editor</span></h1>
+        </div>
+
+        <div class="content-area">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-container">
+                        {% for category, message in messages %}
+                            <div class="flash-message flash-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' }}"></i>
+                                <span>{{ message|safe }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Bot Selector -->
+            <div class="card fade-in" style="margin-bottom: 24px;">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-folder-open"></i> Select Bot</div>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('admin_editor') }}" id="botSelectForm">
+                        <div style="display: flex; gap: 12px; align-items: flex-end;">
+                            <div style="flex: 1;">
+                                <label class="form-label">Choose a Bot</label>
+                                <select name="bot_id" class="form-input" onchange="document.getElementById('botSelectForm').submit()" style="cursor: pointer;">
+                                    <option value="">-- Select Bot --</option>
+                                    {% for bot in all_bots %}
+                                    <option value="{{ bot.id }}" {% if selected_bot_id == bot.id %}selected{% endif %}>
+                                        {{ bot.filename }} ({{ bot.uid }}) - {{ bot.owner.username }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {% if selected_bot %}
+            <div style="display: grid; grid-template-columns: 300px 1fr; gap: 24px;">
+                <!-- File Tree -->
+                <div class="card fade-in" style="height: fit-content;">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fas fa-folder-tree"></i> Files</div>
+                    </div>
+                    <div class="card-body" style="padding: 0; max-height: 600px; overflow-y: auto;">
+                        {% if files_list %}
+                        <div class="file-tree">
+                            {% for file in files_list %}
+                            <a href="{{ url_for('admin_editor', bot_id=selected_bot.id, file=file.rel) }}" 
+                               class="file-item" 
+                               style="text-decoration: none; color: inherit; {% if selected_file == file.rel %}background: rgba(99,102,241,0.1); border-left: 3px solid var(--accent-primary);{% endif %}">
+                                <div class="file-icon {{ 'py' if file.ext == '.py' else 'txt' if file.ext in ['.txt', '.md', '.json', '.env'] else 'zip' if file.ext == '.zip' else 'default' }}">
+                                    <i class="{% if file.ext == '.py' %}fab fa-python{% elif file.ext in ['.txt', '.md'] %}fas fa-file-alt{% elif file.ext == '.json' %}fas fa-code{% elif file.ext == '.env' %}fas fa-cog{% else %}fas fa-file{% endif %}"></i>
+                                </div>
+                                <div class="file-details" style="min-width: 0;">
+                                    <div class="file-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ file.name }}</div>
+                                    <div class="file-meta">{{ file.size_str }}</div>
+                                </div>
+                                {% if file.is_main %}
+                                <span class="badge" style="background: rgba(99,102,241,0.1); color: var(--accent-primary); font-size: 9px; padding: 2px 6px;">MAIN</span>
+                                {% endif %}
+                            </a>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div style="padding: 24px; text-align: center; color: var(--text-secondary);">
+                            <i class="fas fa-folder-open" style="font-size: 24px; margin-bottom: 8px; display: block;"></i>
+                            No files found
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Editor -->
+                <div class="card fade-in">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title"><i class="fas fa-code"></i> Editor</div>
+                            {% if file_path %}
+                            <div style="font-size: 12px; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; margin-top: 4px;">
+                                {{ file_path }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% if file_path %}
+                        <div style="display: flex; gap: 8px;">
+                            <a href="{{ url_for('download_file', bot_id=selected_bot.id, rel_path=file_path) }}" class="btn btn-secondary btn-sm" download>
+                                <i class="fas fa-download"></i> Download
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-body">
+                        {% if file_path %}
+                        <form method="POST" action="{{ url_for('admin_editor_save') }}">
+                            <input type="hidden" name="bot_id" value="{{ selected_bot.id }}">
+                            <input type="hidden" name="file_path" value="{{ file_path }}">
+
+                            <div class="form-group">
+                                <textarea name="content" class="code-editor" spellcheck="false">{{ file_content }}</textarea>
+                            </div>
+
+                            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                                <a href="{{ url_for('admin_editor', bot_id=selected_bot.id) }}" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Cancel
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save Changes
+                                </button>
+                            </div>
+                        </form>
+                        {% else %}
+                        <div class="empty-state" style="padding: 60px 20px;">
+                            <div class="empty-icon">
+                                <i class="fas fa-file-code"></i>
+                            </div>
+                            <div class="empty-title">Select a File</div>
+                            <div class="empty-text">Choose a file from the left sidebar to edit.</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card fade-in">
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i class="fas fa-folder-open"></i>
+                    </div>
+                    <div class="empty-title">Select a Bot</div>
+                    <div class="empty-text">Choose a bot from the dropdown above to browse and edit its files.</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+</div>
+
+<style>
+.code-editor {
+    width: 100%;
+    min-height: 500px;
+    padding: 16px;
+    background: #0d0d15;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    color: #a5b4fc;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    resize: vertical;
+    outline: none;
+    tab-size: 4;
+}
+.code-editor:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+@media (max-width: 768px) {
+    .content-area > div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+    }
+}
+</style>
+
+<script>
+// Tab support in textarea
+document.querySelectorAll('.code-editor').forEach(editor => {
+    editor.addEventListener('keydown', function(e) {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = this.selectionStart;
+            const end = this.selectionEnd;
+            this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+            this.selectionStart = this.selectionEnd = start + 4;
+        }
+    });
+});
+</script>
+{% endblock %}

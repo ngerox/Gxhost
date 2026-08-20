@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}My Files - GX HOSTING Host{% endblock %}
+
+{% block body %}
+<div class="app-container">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="{{ url_for('dashboard') }}" class="logo">
+                <div class="logo-icon"><i class="fas fa-rocket"></i></div>
+                <div>
+                    <div class="logo-text">GX HOSTING</div>
+                    <div class="logo-subtitle">Bot Hosting</div>
+                </div>
+            </a>
+        </div>
+        <nav class="nav-menu">
+            <div class="nav-section">
+                <div class="nav-section-title">Main</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-item">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+                <a href="{{ url_for('upload') }}" class="nav-item">
+                    <i class="fas fa-cloud-upload-alt"></i> Upload Bot
+                </a>
+                <a href="{{ url_for('my_files') }}" class="nav-item active">
+                    <i class="fas fa-folder-open"></i> My Files
+                </a>
+            </div>
+            {% if user.role == 'owner' %}
+            <div class="nav-section">
+                <div class="nav-section-title">Administration</div>
+                <a href="{{ url_for('admin_panel') }}" class="nav-item">
+                    <i class="fas fa-shield-alt"></i> Admin Panel
+                </a>
+            </div>
+            {% endif %}
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-card">
+                <div class="user-avatar">{{ user.username[0]|upper }}</div>
+                <div class="user-info">
+                    <div class="user-name">{{ user.username }}</div>
+                    <div class="user-role">{{ user.role|title }}</div>
+                </div>
+                <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fas fa-sign-out-alt"></i></a>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="top-bar">
+            <button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+            <h1 class="page-title">My <span>Files</span></h1>
+            <div class="top-actions">
+                <div class="badge" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+                    <i class="fas fa-hdd"></i> {{ total_size }} total
+                </div>
+                <div class="badge" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+                    <i class="fas fa-file"></i> {{ total_files }} files
+                </div>
+            </div>
+        </div>
+
+        <div class="content-area">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-container">
+                        {% for category, message in messages %}
+                            <div class="flash-message flash-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' }}"></i>
+                                <span>{{ message|safe }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            {% if folders %}
+                {% for folder in folders %}
+                <div class="card fade-in" style="margin-bottom: 24px;">
+                    <div class="card-header">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 40px; height: 40px; background: var(--accent-gradient); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white;">
+                                <i class="fas fa-folder"></i>
+                            </div>
+                            <div>
+                                <div class="card-title">{{ folder.bot.filename }}</div>
+                                <div style="font-size: 12px; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace;">
+                                    {{ folder.bot.uid }} | {{ folder.file_count }} files | {{ folder.folder_size }}
+                                </div>
+                            </div>
+                        </div>
+                        <span class="badge badge-{{ folder.bot.status }}">
+                            <span class="badge-dot"></span> {{ folder.bot.status|upper }}
+                        </span>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+                        <div class="file-tree">
+                            {% for file in folder.files %}
+                            <div class="file-item">
+                                <div class="file-icon {{ 'py' if file.ext == '.py' else 'txt' if file.ext in ['.txt', '.md', '.json'] else 'zip' if file.ext == '.zip' else 'default' }}">
+                                    <i class="fab fa-python" style="color: var(--accent-primary);"></i>
+                                </div>
+                                <div class="file-details">
+                                    <div class="file-name">
+                                        {{ file.name }}
+                                        {% if file.is_main %}
+                                        <span class="badge" style="background: rgba(99,102,241,0.1); color: var(--accent-primary); font-size: 10px; padding: 2px 8px; margin-left: 8px;">
+                                            <i class="fas fa-play"></i> Entry Point
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="file-meta">{{ file.rel }} | Modified: {{ file.modified }}</div>
+                                </div>
+                                <div class="file-size">{{ file.size_str }}</div>
+                                <a href="{{ url_for('download_file', bot_id=folder.bot.id, rel_path=file.rel) }}" class="btn btn-secondary btn-sm btn-icon" style="margin-left: 12px;" title="Download" download>
+                                    <i class="fas fa-download"></i>
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="card">
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i class="fas fa-folder-open"></i>
+                    </div>
+                    <div class="empty-title">No Files Yet</div>
+                    <div class="empty-text">Upload a bot to see your files here.</div>
+                    <a href="{{ url_for('upload') }}" class="btn btn-primary">
+                        <i class="fas fa-cloud-upload-alt"></i> Upload Bot
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+</div>
+{% endblock %}

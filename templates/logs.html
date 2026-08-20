@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Logs - {{ bot.filename }} - GX HOSTING Host{% endblock %}
+
+{% block body %}
+<style>
+.input-box{width:100%;padding:12px;border-radius:10px;background:var(--card);color:var(--text);border:1px solid var(--border);font-family:monospace;}
+</style>
+<div class="app-container">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="{{ url_for('dashboard') }}" class="logo">
+                <div class="logo-icon"><i class="fas fa-rocket"></i></div>
+                <div>
+                    <div class="logo-text">GX HOSTING</div>
+                    <div class="logo-subtitle">Bot Hosting</div>
+                </div>
+            </a>
+        </div>
+        <nav class="nav-menu">
+            <div class="nav-section">
+                <div class="nav-section-title">Main</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-item">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+                <a href="{{ url_for('upload') }}" class="nav-item">
+                    <i class="fas fa-cloud-upload-alt"></i> Upload Bot
+                </a>
+                <a href="{{ url_for('my_files') }}" class="nav-item">
+                    <i class="fas fa-folder-open"></i> My Files
+                </a>
+            </div>
+            {% if current_user() and current_user().role == 'owner' %}
+            <div class="nav-section">
+                <div class="nav-section-title">Administration</div>
+                <a href="{{ url_for('admin_panel') }}" class="nav-item">
+                    <i class="fas fa-shield-alt"></i> Admin Panel
+                </a>
+            </div>
+            {% endif %}
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-card">
+                <div class="user-avatar">{{ current_user().username[0]|upper }}</div>
+                <div class="user-info">
+                    <div class="user-name">{{ current_user().username }}</div>
+                    <div class="user-role">{{ current_user().role|title }}</div>
+                </div>
+                <a href="{{ url_for('logout') }}" class="logout"-btn"><i class="fas fa-sign-out-alt"></i></a>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="top-bar">
+            <button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+            <h1 class="page-title">Bot <span>Logs</span></h1>
+            <div class="top-actions">
+                <a href="{{ url_for('download_logs', bot_id=bot.id) }}" class="btn btn-secondary">
+                    <i class="fas fa-download"></i> Download
+                </a>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+            </div>
+        </div>
+
+        <div class="content-area">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-container">
+                        {% for category, message in messages %}
+                            <div class="flash-message flash-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' }}"></i>
+                                <span>{{ message|safe }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="card fade-in">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title"><i class="fas fa-terminal"></i> {{ bot.filename }}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; margin-top: 4px;">
+                            {{ bot.uid }} | Status: <span class="badge badge-{{ bot.status }}">{{ bot.status|upper }}</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span id="liveIndicator" class="badge badge-running" style="display: none;">
+                            <span class="badge-dot"></span> LIVE
+                        </span>
+                        <button class="btn btn-secondary btn-sm" onclick="toggleAutoRefresh()" id="autoRefreshBtn">
+                            <i class="fas fa-sync-alt"></i> Auto: OFF
+                        </button>
+                        <button class="btn btn-secondary btn-sm btn-icon" onclick="refreshLogs()" title="Refresh">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body" style="padding: 0;">
+                    <div class="log-container" id="logContainer">
+                        {% if logs %}
+                            {{ logs|safe }}
+                        {% else %}
+                            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                                <i class="fas fa-file-alt" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                                No logs available yet.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <form method="post" action="{{ url_for('send_input', bot_id=bot.id) }}" style="padding:16px;">
+                    <input name="input" class="input-box" placeholder="CLICK TO INPUT TEXT" autocomplete="off">
+                    <button class="btn btn-secondary" style="margin-top:10px;">Send Input</button>
+                </form>
+            </div>
+
+            <div class="card fade-in" style="margin-top:16px;">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-file"></i> Output Files</div>
+                </div>
+                <div class="card-body">
+                    {% if output_files %}
+                    {% for f in output_files %}
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid var(--border);">
+                        <span>{{ f }}</span>
+                        <div>
+                        <a class="btn btn-secondary btn-sm" href="{{ url_for('download_file', bot_id=bot.id, rel_path=f) }}"><i class="fas fa-download"></i> Download</a>
+                        <form style="display:inline;" method="post" action="{{ url_for('delete_file', bot_id=bot.id, rel_path=f) }}">
+                        <button class="btn btn-secondary btn-sm"><i class="fas fa-trash"></i> Delete</button>
+                        </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div style="padding:20px;color:var(--text-secondary);">No output files found.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+let autoRefresh = false;
+let refreshInterval;
+const logContainer = document.getElementById('logContainer');
+const autoRefreshBtn = document.getElementById('autoRefreshBtn');
+const liveIndicator = document.getElementById('liveIndicator');
+
+function toggleAutoRefresh() {
+    autoRefresh = !autoRefresh;
+    if (autoRefresh) {
+        autoRefreshBtn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Auto: ON';
+        autoRefreshBtn.style.background = 'rgba(34,197,94,0.1)';
+        autoRefreshBtn.style.color = 'var(--success)';
+        autoRefreshBtn.style.borderColor = 'rgba(34,197,94,0.2)';
+        liveIndicator.style.display = 'inline-flex';
+        refreshInterval = setInterval(refreshLogs, 3000);
+    } else {
+        autoRefreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Auto: OFF';
+        autoRefreshBtn.style.background = '';
+        autoRefreshBtn.style.color = '';
+        autoRefreshBtn.style.borderColor = '';
+        liveIndicator.style.display = 'none';
+        clearInterval(refreshInterval);
+    }
+}
+
+async function refreshLogs() {
+    try {
+        const response = await fetch('/logs_raw/{{ bot.id }}');
+        const text = await response.text();
+        if (text.trim()) {
+            logContainer.innerHTML = text;
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+    } catch (e) {
+        console.error('Failed to refresh logs:', e);
+    }
+}
+
+// Auto-scroll to bottom on load
+if (logContainer) {
+    logContainer.scrollTop = logContainer.scrollHeight;
+}
+</script>
+{% endblock %}

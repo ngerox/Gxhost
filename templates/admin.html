@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - GX HOSTING Host{% endblock %}
+
+{% block body %}
+<div class="app-container">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="{{ url_for('dashboard') }}" class="logo">
+                <div class="logo-icon"><i class="fas fa-rocket"></i></div>
+                <div>
+                    <div class="logo-text">GX HOSTING</div>
+                    <div class="logo-subtitle">Bot Hosting</div>
+                </div>
+            </a>
+        </div>
+        <nav class="nav-menu">
+            <div class="nav-section">
+                <div class="nav-section-title">Main</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-item">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+                <a href="{{ url_for('upload') }}" class="nav-item">
+                    <i class="fas fa-cloud-upload-alt"></i> Upload Bot
+                </a>
+                <a href="{{ url_for('my_files') }}" class="nav-item">
+                    <i class="fas fa-folder-open"></i> My Files
+                </a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Administration</div>
+                <a href="{{ url_for('admin_panel') }}" class="nav-item active">
+                    <i class="fas fa-shield-alt"></i> Admin Panel
+                </a>
+                <a href="{{ url_for('admin_editor') }}" class="nav-item">
+                    <i class="fas fa-code"></i> File Editor
+                </a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-card">
+                <div class="user-avatar">{{ current_user().username[0]|upper }}</div>
+                <div class="user-info">
+                    <div class="user-name">{{ current_user().username }}</div>
+                    <div class="user-role">Owner</div>
+                </div>
+                <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fas fa-sign-out-alt"></i></a>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="top-bar">
+            <button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+            <h1 class="page-title">Admin <span>Panel</span></h1>
+        </div>
+
+        <div class="content-area">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-container">
+                        {% for category, message in messages %}
+                            <div class="flash-message flash-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' }}"></i>
+                                <span>{{ message|safe }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Contact Link Settings -->
+            <div class="card fade-in" style="margin-bottom: 24px;">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-link"></i> Contact Link Settings</div>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin_set_contact_link') }}" style="display: flex; gap: 12px; align-items: flex-end;">
+                        <div style="flex: 1;">
+                            <label class="form-label">Contact Link (Telegram/WhatsApp/etc.)</label>
+                            <input type="url" name="contact_link" class="form-input" value="{{ contact_link or '' }}" placeholder="https://t.me/username">
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Create User -->
+            <div class="card fade-in" style="margin-bottom: 24px;">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-user-plus"></i> Create New User</div>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin_create_user') }}">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                            <div class="form-group">
+                                <label class="form-label">Username</label>
+                                <input type="text" name="username" class="form-input" placeholder="username" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Password</label>
+                                <input type="password" name="password" class="form-input" placeholder="password" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Expiry Date (YYYY-MM-DD)</label>
+                                <input type="text" name="expiry" class="form-input" placeholder="2026-12-31">
+                            </div>
+                            <div class="form-group" style="display: flex; align-items: flex-end; gap: 8px; padding-bottom: 8px;">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="checkbox" name="approved" value="1" style="width: 18px; height: 18px; accent-color: var(--accent-primary);">
+                                    <span style="font-size: 14px;">Auto-approve</span>
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="margin-top: 16px;">
+                            <i class="fas fa-user-plus"></i> Create User
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Users Table -->
+            <div class="card fade-in" style="margin-bottom: 24px;">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-users"></i> All Users ({{ users|length }})</div>
+                </div>
+                <div class="card-body" style="padding: 0; overflow-x: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Expiry</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for u in users %}
+                            <tr>
+                                <td style="font-family: 'JetBrains Mono', monospace; font-size: 12px;">{{ u.id }}</td>
+                                <td><strong>{{ u.username }}</strong></td>
+                                <td>
+                                    <span class="badge" style="background: {% if u.role == 'owner' %}rgba(99,102,241,0.1); color: var(--accent-primary){% else %}rgba(148,163,184,0.1); color: var(--text-secondary){% endif %};">
+                                        {{ u.role|upper }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if u.approved %}
+                                    <span class="badge badge-running"><span class="badge-dot"></span> APPROVED</span>
+                                    {% else %}
+                                    <span class="badge badge-pending"><span class="badge-dot"></span> PENDING</span>
+                                    {% endif %}
+                                </td>
+                                <td style="font-family: 'JetBrains Mono', monospace; font-size: 12px;">
+                                    {{ u.expiry.strftime('%Y-%m-%d') if u.expiry else 'Never' }}
+                                </td>
+                                <td style="font-size: 12px; color: var(--text-secondary);">
+                                    {{ u.created_at.strftime('%Y-%m-%d') if u.created_at else 'N/A' }}
+                                </td>
+                                <td>
+                                    {% if u.username != 'GX HOSTING' %}
+                                    <div style="display: flex; gap: 6px;">
+                                        <form method="POST" action="{{ url_for('admin_set_user_status', user_id=u.id) }}" style="display: inline;">
+                                            <input type="hidden" name="action" value="approve">
+                                            <button type="submit" class="btn btn-success btn-sm" {% if u.approved %}disabled{% endif %}>
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('admin_set_user_status', user_id=u.id) }}" style="display: inline;">
+                                            <input type="hidden" name="action" value="deny">
+                                            <button type="submit" class="btn btn-danger btn-sm" {% if not u.approved %}disabled{% endif %}>
+                                                <i class="fas fa-ban"></i>
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('admin_set_user_status', user_id=u.id) }}" style="display: inline;" onsubmit="return confirm('Delete user {{ u.username }}?');">
+                                            <input type="hidden" name="action" value="delete">
+                                            <button type="submit" class="btn btn-danger btn-sm btn-icon">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% else %}
+                                    <span style="font-size: 12px; color: var(--text-secondary);">Owner</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pending Bots -->
+            {% if pending_bots %}
+            <div class="card fade-in" style="margin-bottom: 24px;">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-clock"></i> Pending Bots ({{ pending_bots|length }})</div>
+                </div>
+                <div class="card-body" style="padding: 0; overflow-x: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>UID</th>
+                                <th>Filename</th>
+                                <th>Owner</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for bot in pending_bots %}
+                            <tr>
+                                <td style="font-family: 'JetBrains Mono', monospace; font-size: 12px;">{{ bot.uid }}</td>
+                                <td><strong>{{ bot.filename }}</strong></td>
+                                <td>{{ bot.owner.username if bot.owner else 'Unknown' }}</td>
+                                <td style="font-size: 12px; color: var(--text-secondary);">{{ bot.created_at.strftime('%Y-%m-%d %H:%M') if bot.created_at else 'N/A' }}</td>
+                                <td>
+                                    <div style="display: flex; gap: 6px;">
+                                        <form method="POST" action="{{ url_for('approve_bot', bot_id=bot.id) }}" style="display: inline;">
+                                            <button type="submit" class="btn btn-success btn-sm">
+                                                <i class="fas fa-check"></i> Approve
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('reject_bot', bot_id=bot.id) }}" style="display: inline;">
+                                            <button type="submit" class="btn btn-danger btn-sm">
+                                                <i class="fas fa-times"></i> Reject
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- All Bots -->
+            <div class="card fade-in">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-robot"></i> All Bots ({{ all_bots|length }})</div>
+                </div>
+                <div class="card-body" style="padding: 0; overflow-x: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>UID</th>
+                                <th>Filename</th>
+                                <th>Owner</th>
+                                <th>Status</th>
+                                <th>Entry Point</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for bot in all_bots %}
+                            <tr>
+                                <td style="font-family: 'JetBrains Mono', monospace; font-size: 12px;">{{ bot.uid }}</td>
+                                <td><strong>{{ bot.filename }}</strong></td>
+                                <td>{{ bot.owner.username if bot.owner else 'Unknown' }}</td>
+                                <td>
+                                    <span class="badge badge-{{ bot.status }}">
+                                        <span class="badge-dot"></span> {{ bot.status|upper }}
+                                    </span>
+                                </td>
+                                <td style="font-family: 'JetBrains Mono', monospace; font-size: 12px;">{{ bot.main_file or 'N/A' }}</td>
+                                <td style="font-size: 12px; color: var(--text-secondary);">{{ bot.created_at.strftime('%Y-%m-%d %H:%M') if bot.created_at else 'N/A' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
